@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Weight Log" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Weight Log</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --border: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --green: #4ade80;
+      --green-bg: #052e16;
+      --green-border: #166534;
+      --red: #f87171;
+      --red-bg: #2d0a0a;
+      --red-border: #7f1d1d;
+      --gold: #fbbf24;
+      --radius: 14px;
+      --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: env(safe-area-inset-top, 20px) 0 env(safe-area-inset-bottom, 20px);
+    }
+
+    .app { width: 100%; max-width: 420px; padding: 24px 20px; }
+
+    /* Header */
+    .header { margin-bottom: 28px; }
+    .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .app-name { font-size: 13px; font-weight: 600; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; }
+    .notif-btn {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 6px 12px; font-size: 12px;
+      color: var(--muted); cursor: pointer; transition: all 0.2s;
+    }
+    .notif-btn.active { color: var(--gold); border-color: var(--gold); }
+    .date-line { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.2; }
+    .date-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* Progress */
+    .progress { display: flex; gap: 5px; margin-bottom: 28px; }
+    .pip { height: 3px; flex: 1; border-radius: 2px; background: var(--border); transition: background 0.3s; }
+    .pip.active { background: var(--accent); }
+    .pip.done { background: var(--muted); }
+
+    /* Steps */
+    .step { display: none; animation: fadeIn 0.25s ease; }
+    .step.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Cards */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 14px;
+    }
+    .card-label { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px; }
+
+    /* Weight input */
+    .weight-display {
+      display: flex; align-items: baseline; gap: 8px;
+      justify-content: center; padding: 8px 0 12px;
+    }
+    .weight-num {
+      font-size: 56px; font-weight: 700; color: var(--accent);
+      min-width: 120px; text-align: center; line-height: 1;
+      border: none; background: transparent; outline: none;
+      font-family: var(--font);
+    }
+    .weight-num::placeholder { color: var(--border); }
+    .weight-unit { font-size: 20px; color: var(--muted); font-weight: 500; }
+    .weight-err { font-size: 12px; color: var(--red); text-align: center; margin-top: 6px; display: none; }
+
+    /* Numpad */
+    .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .numpad-key {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px; font-size: 20px; font-weight: 500;
+      color: var(--text); cursor: pointer; text-align: center;
+      transition: background 0.1s, transform 0.1s; user-select: none;
+      -webkit-user-select: none;
+    }
+    .numpad-key:active { background: var(--border); transform: scale(0.95); }
+    .numpad-key.del { font-size: 16px; color: var(--muted); }
+    .numpad-key.dot { color: var(--accent); }
+
+    /* Activity grid */
+    .act-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .act-btn {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 14px;
+      cursor: pointer; text-align: left; transition: all 0.2s;
+      -webkit-user-select: none;
+    }
+    .act-btn:active { transform: scale(0.97); }
+    .act-btn.done { background: var(--green-bg); border-color: var(--green-border); }
+    .act-icon { font-size: 22px; margin-bottom: 8px; display: block; }
+    .act-name { font-size: 13px; font-weight: 600; color: var(--text); display: block; }
+    .act-status { font-size: 11px; color: var(--muted); display: block; margin-top: 3px; }
+    .act-btn.done .act-status { color: var(--green); }
+    .act-btn.done .act-name { color: var(--green); }
+
+    /* Summary */
+    .summary-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+    }
+    .summary-row:last-child { border: none; }
+    .summary-key { color: var(--muted); }
+    .summary-val { font-weight: 600; }
+    .badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+    .badge.done { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+    .badge.skip { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+
+    /* Score */
+    .score-box {
+      background: var(--bg); border-radius: var(--radius);
+      padding: 20px; text-align: center; margin: 14px 0;
+      border: 1px solid var(--border);
+    }
+    .score-num { font-size: 48px; font-weight: 800; color: var(--gold); line-height: 1; }
+    .score-label { font-size: 12px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* Buttons */
+    .btn {
+      width: 100%; padding: 15px; border-radius: var(--radius);
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--text); transition: all 0.2s; font-family: var(--font);
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+    .btn.primary:active { background: #7dd3fc; }
+    .btn + .btn { margin-top: 10px; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Success */
+    .success { text-align: center; padding: 16px 0; }
+    .success-icon { font-size: 56px; margin-bottom: 12px; }
+    .success-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .success-sub { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+    /* Setup screen */
+    .setup { text-align: center; }
+    .setup-icon { font-size: 48px; margin-bottom: 16px; }
+    .setup h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .setup p { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.6; }
+    .input-group { margin-bottom: 12px; text-align: left; }
+    .input-group label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .input-group input {
+      width: 100%; padding: 12px 14px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--text); font-size: 14px; font-family: var(--font); outline: none;
+    }
+    .input-group input:focus { border-color: var(--accent); }
+    .hint { font-size: 11px; color: var(--muted); margin-top: 20px; line-height: 1.6; }
+    .hint a { color: var(--accent); }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 20px; font-size: 13px;
+      transition: transform 0.3s; white-space: nowrap; z-index: 100;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* Notif time picker */
+    .time-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+    .time-row input[type=time] {
+      flex: 1; padding: 10px 14px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--text); font-size: 15px; font-family: var(--font); outline: none;
+    }
+    .time-row input[type=time]:focus { border-color: var(--accent); }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SETUP SCREEN -->
+  <div id="screen-setup">
+    <div class="header">
+      <div class="app-name">Weight Log</div>
+    </div>
+    <div class="setup">
+      <div class="setup-icon">⚙️</div>
+      <h2>One-time setup</h2>
+      <p>Connect your Google Sheet so your daily data saves automatically.</p>
+    </div>
+    <div class="input-group">
+      <label>Google Sheet ID</label>
+      <input type="text" id="sheet-id" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" />
+    </div>
+    <div class="input-group">
+      <label>Google Apps Script Web App URL</label>
+      <input type="text" id="script-url" placeholder="https://script.google.com/macros/s/.../exec" />
+    </div>
+    <button class="btn primary" onclick="saveSetup()" style="margin-top:8px">Save & Continue →</button>
+    <p class="hint">
+      📋 <strong>How to get the Script URL:</strong><br>
+      In your Google Sheet → Extensions → Apps Script → paste the <code>doPost</code> code below → Deploy → New deployment → Web app → Execute as: Me → Anyone → Copy the URL.
+    </p>
+  </div>
+
+  <!-- MAIN CHECK-IN -->
+  <div id="screen-main" style="display:none">
+    <div class="header">
+      <div class="header-top">
+        <div class="app-name">Weight Log</div>
+        <button class="notif-btn" id="notif-btn" onclick="toggleNotifications()">🔔 Remind me</button>
+      </div>
+      <div class="date-line" id="date-line"></div>
+      <div class="date-sub" id="date-sub"></div>
+    </div>
+
+    <div class="progress">
+      <div class="pip active" id="pip0"></div>
+      <div class="pip" id="pip1"></div>
+      <div class="pip" id="pip2"></div>
+    </div>
+
+    <!-- Step 1: Weight -->
+    <div class="step active" id="step-weight">
+      <div class="card">
+        <div class="card-label">Today's weight</div>
+        <div class="weight-display">
+          <input class="weight-num" id="weight-display" placeholder="0.0" readonly />
+          <span class="weight-unit">kg</span>
+        </div>
+        <div class="weight-err" id="weight-err">Enter your weight to continue</div>
+      </div>
+      <div class="card" style="padding:16px">
+        <div class="numpad" id="numpad"></div>
+      </div>
+      <button class="btn primary" onclick="goActivities()">Next →</button>
+    </div>
+
+    <!-- Step 2: Activities -->
+    <div class="step" id="step-activities">
+      <div class="card">
+        <div class="card-label">Activities completed</div>
+        <div class="act-grid">
+          <button class="act-btn" id="btn-walk1" onclick="toggle('walk1')">
+            <span class="act-icon">🚶</span>
+            <span class="act-name">1st Walk</span>
+            <span class="act-status" id="st-walk1">Tap to mark done</span>
+          </button>
+          <button class="act-btn" id="btn-walk2" onclick="toggle('walk2')">
+            <span class="act-icon">🚶</span>
+            <span class="act-name">2nd Walk</span>
+            <span class="act-status" id="st-walk2">Tap to mark done</span>
+          </button>
+          <button class="act-btn" id="btn-gym1" onclick="toggle('gym1')">
+            <span class="act-icon">🏋️</span>
+            <span class="act-name">1st Gym</span>
+            <span class="act-status" id="st-gym1">Tap to mark done</span>
+          </button>
+          <button class="act-btn" id="btn-gym2" onclick="toggle('gym2')">
+            <span class="act-icon">🏋️</span>
+            <span class="act-name">2nd Gym</span>
+            <span class="act-status" id="st-gym2">Tap to mark done</span>
+          </button>
+        </div>
+      </div>
+      <button class="btn primary" onclick="goSummary()">Review →</button>
+      <button class="btn" onclick="goStep('step-weight', 0)">← Back</button>
+    </div>
+
+    <!-- Step 3: Summary -->
+    <div class="step" id="step-summary">
+      <div class="card">
+        <div class="card-label">Confirm entry</div>
+        <div class="summary-row"><span class="summary-key">Weight</span><span class="summary-val" id="s-weight"></span></div>
+        <div class="summary-row"><span class="summary-key">1st Walk</span><span id="s-walk1"></span></div>
+        <div class="summary-row"><span class="summary-key">2nd Walk</span><span id="s-walk2"></span></div>
+        <div class="summary-row"><span class="summary-key">1st Gym</span><span id="s-gym1"></span></div>
+        <div class="summary-row"><span class="summary-key">2nd Gym</span><span id="s-gym2"></span></div>
+      </div>
+      <div class="score-box">
+        <div class="score-num" id="s-score">0</div>
+        <div class="score-label">Activity score today</div>
+      </div>
+      <button class="btn primary" id="save-btn" onclick="submitData()">Save to sheet ✓</button>
+      <button class="btn" onclick="goStep('step-activities', 1)">← Back</button>
+    </div>
+
+    <!-- Step 4: Done -->
+    <div class="step" id="step-done">
+      <div class="card">
+        <div class="success">
+          <div class="success-icon">✅</div>
+          <div class="success-title" id="done-title">Logged!</div>
+          <div class="success-sub" id="done-sub"></div>
+        </div>
+      </div>
+      <button class="btn primary" onclick="resetForm()">Log another day</button>
+    </div>
+  </div>
+
+  <!-- Notification time picker (hidden) -->
+  <div id="notif-panel" style="display:none; margin-top:14px;">
+    <div class="card">
+      <div class="card-label">Daily reminder time</div>
+      <div class="time-row">
+        <input type="time" id="notif-time" value="20:00" />
+        <button class="btn primary" style="width:auto;padding:10px 18px" onclick="saveNotifTime()">Set</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── Config defaults ──
+  const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyftDmiJb9E5-mx8Y5T1tK6EEsmlJaOkjttzBPCQpIitZlFt5GHXz9Zgk9L8gVS9sJeg/exec';
+  if (!localStorage.getItem('scriptUrl')) localStorage.setItem('scriptUrl', DEFAULT_SCRIPT_URL);
+
+  // ── State ──────────────────────────────────────────────
+  let weightStr = '';
+  const acts = { walk1: false, walk2: false, gym1: false, gym2: false };
+
+  // ── Init ───────────────────────────────────────────────
+  window.addEventListener('load', () => {
+    const cfg = getConfig();
+    if (cfg.scriptUrl) {
+      showScreen('main');
+      initDate();
+      buildNumpad();
+      updateNotifBtn();
+    } else {
+      showScreen('setup');
+    }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js', {scope: '/log/'}).catch(() => {});
+    }
+  });
+
+  function showScreen(name) {
+    document.getElementById('screen-setup').style.display = name === 'setup' ? 'block' : 'none';
+    document.getElementById('screen-main').style.display = name === 'main' ? 'block' : 'none';
+  }
+
+  // ── Config ─────────────────────────────────────────────
+  function getConfig() {
+    return {
+      scriptUrl: localStorage.getItem('scriptUrl') || '',
+      sheetId: localStorage.getItem('sheetId') || '',
+      notifTime: localStorage.getItem('notifTime') || '20:00',
+    };
+  }
+
+  function saveSetup() {
+    const url = document.getElementById('script-url').value.trim();
+    const id  = document.getElementById('sheet-id').value.trim();
+    if (!url) { showToast('Paste your Script Web App URL'); return; }
+    localStorage.setItem('scriptUrl', url);
+    localStorage.setItem('sheetId', id);
+    showScreen('main');
+    initDate();
+    buildNumpad();
+    updateNotifBtn();
+  }
+
+  // ── Date ───────────────────────────────────────────────
+  function initDate() {
+    const now = new Date();
+    const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const isWeekend = now.getDay() === 0 || now.getDay() === 6;
+    document.getElementById('date-line').textContent =
+      `${isWeekend ? '🏖 ' : ''}${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
+    document.getElementById('date-sub').textContent =
+      `${months[now.getMonth()]} ${now.getFullYear()} · Log your daily data`;
+  }
+
+  // ── Numpad ─────────────────────────────────────────────
+  function buildNumpad() {
+    const keys = ['1','2','3','4','5','6','7','8','9','.','0','⌫'];
+    const np = document.getElementById('numpad');
+    np.innerHTML = '';
+    keys.forEach(k => {
+      const btn = document.createElement('button');
+      btn.className = 'numpad-key' + (k === '⌫' ? ' del' : k === '.' ? ' dot' : '');
+      btn.textContent = k;
+      btn.onclick = () => numpadPress(k);
+      np.appendChild(btn);
+    });
+  }
+
+  function numpadPress(k) {
+    if (k === '⌫') {
+      weightStr = weightStr.slice(0, -1);
+    } else if (k === '.') {
+      if (!weightStr.includes('.')) weightStr += '.';
+    } else {
+      if (weightStr.length >= 5) return;
+      weightStr += k;
+    }
+    document.getElementById('weight-display').value = weightStr || '';
+    document.getElementById('weight-err').style.display = 'none';
+  }
+
+  // ── Steps ──────────────────────────────────────────────
+  function goStep(stepId, pipIdx) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById(stepId).classList.add('active');
+    setPips(pipIdx);
+  }
+
+  function setPips(active) {
+    for (let i = 0; i < 3; i++) {
+      const p = document.getElementById('pip' + i);
+      p.className = 'pip' + (i < active ? ' done' : i === active ? ' active' : '');
+    }
+  }
+
+  function goActivities() {
+    const num = parseFloat(weightStr);
+    if (!weightStr || isNaN(num) || num < 20 || num > 400) {
+      document.getElementById('weight-err').style.display = 'block';
+      return;
+    }
+    goStep('step-activities', 1);
+  }
+
+  function toggle(key) {
+    acts[key] = !acts[key];
+    document.getElementById('btn-' + key).classList.toggle('done', acts[key]);
+    document.getElementById('st-' + key).textContent = acts[key] ? 'Done ✓' : 'Tap to mark done';
+  }
+
+  function badge(done) {
+    return done
+      ? '<span class="badge done">✓ Done</span>'
+      : '<span class="badge skip">✗ Skipped</span>';
+  }
+
+  function goSummary() {
+    const w = parseFloat(weightStr).toFixed(1);
+    document.getElementById('s-weight').textContent = w + ' kg';
+    ['walk1','walk2','gym1','gym2'].forEach(k => {
+      document.getElementById('s-' + k).innerHTML = badge(acts[k]);
+    });
+    const score = Object.values(acts).filter(Boolean).length;
+    document.getElementById('s-score').textContent = '+' + score;
+    goStep('step-summary', 2);
+  }
+
+  // ── Submit ─────────────────────────────────────────────
+  async function submitData() {
+    const btn = document.getElementById('save-btn');
+    btn.textContent = 'Saving…'; btn.disabled = true;
+
+    const payload = {
+      weight: parseFloat(weightStr),
+      walk1: acts.walk1 ? 1 : 0,
+      walk2: acts.walk2 ? 1 : 0,
+      gym1:  acts.gym1  ? 1 : 0,
+      gym2:  acts.gym2  ? 1 : 0,
+    };
+
+    try {
+      const res = await fetch(getConfig().scriptUrl, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const score = Object.values(acts).filter(Boolean).length;
+        document.getElementById('done-title').textContent = `Logged to ${data.month}! 🎉`;
+        document.getElementById('done-sub').textContent =
+          `Weight: ${payload.weight} kg · Activity score: +${score}`;
+        goStep('step-done', 3);
+      } else {
+        showToast('⚠️ ' + (data.message || 'Could not save'));
+        btn.textContent = 'Save to sheet ✓'; btn.disabled = false;
+      }
+    } catch (e) {
+      showToast('⚠️ Network error — check your Script URL');
+      btn.textContent = 'Save to sheet ✓'; btn.disabled = false;
+    }
+  }
+
+  function resetForm() {
+    weightStr = '';
+    document.getElementById('weight-display').value = '';
+    Object.keys(acts).forEach(k => {
+      acts[k] = false;
+      document.getElementById('btn-' + k).classList.remove('done');
+      document.getElementById('st-' + k).textContent = 'Tap to mark done';
+    });
+    goStep('step-weight', 0);
+  }
+
+  // ── Notifications ──────────────────────────────────────
+  function updateNotifBtn() {
+    const btn = document.getElementById('notif-btn');
+    const time = getConfig().notifTime;
+    const perm = Notification.permission;
+    if (perm === 'granted' && localStorage.getItem('notifEnabled')) {
+      btn.textContent = `🔔 ${time}`;
+      btn.classList.add('active');
+    } else {
+      btn.textContent = '🔔 Remind me';
+      btn.classList.remove('active');
+    }
+  }
+
+  function toggleNotifications() {
+    const panel = document.getElementById('notif-panel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    document.getElementById('notif-time').value = getConfig().notifTime;
+  }
+
+  async function saveNotifTime() {
+    const time = document.getElementById('notif-time').value;
+    localStorage.setItem('notifTime', time);
+
+    if (!('Notification' in window)) {
+      showToast('Notifications not supported on this browser'); return;
+    }
+
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+      showToast('Please allow notifications in Settings'); return;
+    }
+
+    localStorage.setItem('notifEnabled', '1');
+    document.getElementById('notif-panel').style.display = 'none';
+    updateNotifBtn();
+    showToast(`✅ Reminder set for ${time} daily`);
+
+    // Schedule via service worker
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'SCHEDULE', time });
+    }
+  }
+
+  // ── Toast ──────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+</script>
+</body>
+</html>
